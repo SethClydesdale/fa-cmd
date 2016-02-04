@@ -1,11 +1,11 @@
 <style type="text/css">* { color:#FFF; font-size:13px; font-family:"Courier New", Courier, monospace, sans-serif; }
 *:focus { outline:none; }
 body { margin:0 !important; overflow:hidden; }
-#cmd_alias { position:absolute; }
-#cmd_input { background:#000; border:none; resize:none; width:100%; height:250px; padding:0; }
+#cmd_alias { position:absolute; background:#000; }
+#cmd_input { background:#000; border:none; resize:none; width:100%; height:150px; padding:0; overflow:hidden; }
+#fa_cmd { background:#000; overflow:auto; position:fixed; top:0; left:0; right:0; bottom:0; z-index:999999; }
 .cmd_help td { vertical-align:top; }
-.cmd_help th { text-align:left; font-weight:normal; }
-#fa_cmd { background:#000; overflow:auto; position:fixed; top:0; left:0; right:0; bottom:0; z-index:999999; }</style>
+.cmd_help th { text-align:left; font-weight:normal; }</style>
 
 <div id="fa_cmd">
   <div id="cmd_log"></div>
@@ -351,7 +351,7 @@ body { margin:0 !important; overflow:hidden; }
       FA.CMD.input.value = '';
       FA.CMD.log.appendChild(a);
       
-      $([document.documentElement, document.body]).scrollTop($(FA.CMD.input).offset().top - FA.CMD.input.getBoundingClientRect().height);
+      $(FA.CMD.body).scrollTop(999999);
     },
     
 
