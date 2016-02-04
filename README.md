@@ -22,4 +22,6 @@ javascript:window.open('/h7-','_blank','height=300,width=800');
 Just make sure to replace the **7** with your HTML page ID. After this you can access the command tool from anywhere you want.
 
 ## Demo
+You can find a live demo [here](http://fmdesign.forumotion.com/h7-fa-cmd)
+
 ![](http://i68.servimg.com/u/f68/18/45/41/65/captur10.gif)
