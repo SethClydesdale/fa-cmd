@@ -1,0 +1,518 @@
+<style type="text/css">* { color:#FFF; font-size:13px; font-family:"Courier New", Courier, monospace, sans-serif; }
+*:focus { outline:none; }
+body { margin:0 !important; overflow:hidden; }
+#cmd_alias { position:absolute; }
+#cmd_input { background:#000; border:none; resize:none; width:100%; height:250px; padding:0; }
+.cmd_help td { vertical-align:top; }
+.cmd_help th { text-align:left; font-weight:normal; }
+#fa_cmd { background:#000; overflow:auto; position:fixed; top:0; left:0; right:0; bottom:0; z-index:999999; }</style>
+
+<div id="fa_cmd">
+  <div id="cmd_log"></div>
+  <div id="cmd_input_container">
+    <span id="cmd_alias"></span>
+    <textarea id="cmd_input"></textarea>
+  </div>
+</div>
+
+<script type="text/javascript">(function() {
+  if (!window.FA) window.FA = {};
+  if (FA.CMD) {
+    if (window.console && console.warn) console.warn('FA.CMD has already been initialized.');
+    return;
+  }
+
+  FA.CMD = {
+    // language data
+    lang : {
+      cmd_help : '<table class="cmd_help">' + 
+        '<thead>' + 
+          '<tr>' + 
+            '<th style="width:35%;">COMMAND SYNTAX</th>' +
+            '<th style="width:65%;">DESCRIPTION</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' +
+          
+          '{ADMIN}<tr>' +
+            '<td>ADMIN</td>' +
+            '<td>Opens the admin control panel.</td>' +
+          '</tr>{/ADMIN}' +
+          
+          '<tr>' +
+            '<td>ADDFOE [USERNAME]</td>' +
+            '<td>Adds the specified user to your foes list.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>ADDFRIEND [USERNAME]</td>' +
+            '<td>Sends a friend request to the specified user.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>ALIAS [NEWALIAS]</td>' +
+            '<td>Change the alias used for the CMD.</td>' +
+          '</tr>' +
+        
+          '<tr>' +
+            '<td>CLEAR</td>' +
+            '<td>Clears the CMD log.</td>' +
+          '</tr>' +
+        
+          '<tr>' +
+            '<td>COLOR [FOREGROUND BACKGROUND]</td>' +
+            '<td>Sets the foreground and background color. The first color edits the foreground and the second color edits the background. Ensure the two colors are separated by a space. (e.g. color #0F0 #030)</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>DATE</td>' +
+            '<td>Displays the current date and time.</td>' +
+          '</tr>' +
+          
+          '{MOD}<tr>' +
+            '<td>DELETETOPIC [TOPICID]</td>' +
+            '<td>Deletes the specified topic.</td>' +
+          '</tr>{/MOD}' +
+          
+          '<tr>' +
+            '<td>ECHO [MESSAGE]</td>' +
+            '<td>Displays the written message or turns command echoing ON and OFF.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>GOTO [PATHNAME]</td>' +
+            '<td>Opens a tab to the specified pathname. (e.g. goto u1)</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>HELP</td>' +
+            '<td>Provides help information for the ForumActif Command Interpreter.</td>' +
+          '</tr>' +
+          
+          '{MOD}<tr>' +
+            '<td>LOCKTOPIC [TOPICID]</td>' +
+            '<td>Locks the specified topic.</td>' +
+          '</tr>{/MOD}' +
+          
+          '{MOD}<tr>' +
+            '<td>MOVETOPIC [TOPICID to FORUMID]</td>' +
+            '<td>Moves the specified topic.</td>' +
+          '</tr>{/MOD}' +
+          
+          '<tr>' +
+            '<td>REMOVEFOE [USERID]</td>' +
+            '<td>Removes the specified user from your foes list.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>REMOVEFRIEND [USERID]</td>' +
+            '<td>Removes the specified user from your friends list.</td>' +
+          '</tr>' +
+          
+          '{ADMIN}<tr>' +
+            '<td>RENAMEUSER [ID to NEWNAME]</td>' +
+            '<td>Renames a user on the forum. The first value should be the user id, then write "to" and write the new username for that user. (e.g. renameuser 1 to john)</td>' +
+          '</tr>{/ADMIN}' +
+          
+          '<tr>' +
+            '<td>SEARCH [KEYWORDS]</td>' +
+            '<td>Performs a search for topics on the forum that contain the specified KEYWORDS.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>TITLE [NEWTITLE]</td>' +
+            '<td>Sets the title for the current CMD window.</td>' +
+          '</tr>' +
+          
+          '{MOD}<tr>' +
+            '<td>TRASHTOPIC [TOPICID]</td>' +
+            '<td>Moves the specified topic to the forum basket.</td>' +
+          '</tr>{/MOD}' +
+          
+          '{MOD}<tr>' +
+            '<td>UNLOCKTOPIC [TOPICID]</td>' +
+            '<td>Unlocks the specified topic.</td>' +
+          '</tr>{/MOD}' +
+          
+          '<tr>' +
+            '<td>USERDATA</td>' +
+            '<td>Returns information based on your account.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>VER</td>' +
+            '<td>Displays the current version of the command interpreter.</td>' +
+          '</tr>' +
+        '</tbody>' +
+      '</table>',
+      
+      cmd_date : 'The current date and time is : %{DATE}',
+      
+      
+      cmd_search_start : 'Beginning search for topics that contain the keyword(s) "%{KEYWORDS}"...',
+      cmd_search_results : '%{N} topic(s) found.',
+      cmd_search_all : 'View the whole list.',
+      cmd_renameuser : 'Attempting to rename user %{UID} to %{NEWNAME}...',
+      
+      cmd_lock_start : 'Attempting to lock topic %{TID}...',
+      cmd_lock_done : 'Topic %{TID} has been locked successfully.',
+      
+      cmd_unlock_start : 'Attempting to unlock topic %{TID}...',
+      cmd_unlock_done : 'Topic %{TID} has been unlocked successfully.',
+      
+      cmd_trash_start : 'Attempting to move topic %{TID} to the forum basket...',
+      cmd_trash_done : 'Topic %{TID} has been moved to the forum basket successfully.',
+      
+      cmd_move_start : 'Attempting to move topic %{TID} to forum %{FID}...',
+      cmd_move_done : 'Topic %{TID} has been moved successfully to forum %{FID}.',
+      
+      cmd_delete_confirm : 'Are you sure you want to delete topic %{TID} ?<br>Y / N',
+      cmd_delete_start : 'Attempting to delete topic %{TID}...',
+      cmd_delete_done : 'Topic %{TID} has been deleted successfully.',
+      cmd_delete_abort : 'Topic deletion has been aborted.',
+      
+      cmd_addfriend_start : 'Attempting to add %{UID} to your friends list...',
+      cmd_addfriend_done : 'The friend request has been sent successfully to %{UID}.',
+      
+      cmd_addfoe_start : 'Attempting to add %{UID} to your foes list...',
+      cmd_addfoe_done : '%{UID} has been successfully added to your foes list.',
+      
+      cmd_removefriend_start : 'Attempting to remove user %{UID} from your friends list...',
+      cmd_removefriend_done : 'User %{UID} has been successfully removed from your friends list.',
+      
+      cmd_removefoe_start : 'Attempting to remove user %{UID} from your foes list...',
+      cmd_removefoe_done : 'User %{UID} has been successfully removed from your foes list.',
+      
+      cmd_echo : 'ECHO is %{STATE}.',
+      cmd_error : '"%{INPUT}" is not recognized as an internal command.',
+      
+      denied : 'PERMISSION DENIED.',
+      loading : 'Please wait while the command line is initialized...',
+      welcome : 'Welcome to the Forumactif command-line interpreter ! Type "help" without the quotes if you need more information on the use of this tool.',
+      version : 'ForumActif Command Interpreter [Version 0.2.1]',
+      notice : 'Developed by <a href="https://github.com/SethClydesdale" target="_blank">Seth Clydesdale</a>. No distribution without consent of the author.'
+    },
+    
+    // change alias
+    changeAlias : function(alias) {
+      FA.CMD.alias.innerHTML = alias.toUpperCase() + '&gt;&nbsp;';
+      $('.cmd_alias', FA.CMD.body).html(alias.toUpperCase() + '&gt;&nbsp;');
+      FA.CMD.input.style.textIndent = FA.CMD.alias.getBoundingClientRect().width + 'px';
+    },
+    
+    // change the colors of the command prompt
+    color : function(color) {
+      $(document.body).append('<style>* { color:' + (color[0] || '#FFF') + ' !important; background:' + (color[1] || '#000') + ' !important; }</style>');
+    },
+    
+    // rename a user
+    renameUser : function(id, newName) {
+      var url = '/admin/index.forum?mode=edit&part=users_groups&sub=users&u=' + id + '&tid=' + FA.CMD.tid;
+      
+      FA.CMD.write(FA.CMD.lang.cmd_renameuser.replace(/%\{UID\}/, id).replace(/%\{NEWNAME\}/, newName));
+      
+      $.get(url, function(d) {
+        var form = $('#post', d)[0];
+        form.username_edit.value = newName;
+        $.post(url, $(form).serialize() + '&submit=1', function(d) {
+          var success = $('.successbox', d)[0],
+              error = $('.errorbox', d)[0];
+              
+          FA.CMD.write(success ? success.getElementsByTagName('P')[0].innerHTML : error ? error.getElementsByTagName('P')[0].innerHTML : 'UNKNOWN ERROR');
+          FA.CMD.write('<br>');
+        });
+      });
+    },
+    
+    // modify friends foes management
+    friendFoe : function(id, action) {
+      var profile = '<a href="/profile?mode=viewprofile&u=' + id + '" target="_blank">' + id + '</a>';
+      
+      FA.CMD.write(FA.CMD.lang['cmd_' + action + '_start'].replace(/%\{UID\}/, profile));
+      $.get(/remove/.test(action) ? '/profile?mode=editprofile&page_profil=friendsfoes&remove=' + id : '/profile?' + (/friend/.test(action) ? 'friend' : 'foe') + '=' + id + '&mode=editprofile&page_profil=friendsfoes', function() {
+        FA.CMD.write(FA.CMD.lang['cmd_' + action + '_done'].replace(/%\{UID\}/, profile));
+        FA.CMD.write('<br>');
+      });
+    },
+    
+    // modify topic states
+    modifyTopic : function(id, action) {
+      var topicURL = '<a href="/t' + id + '-" target="_blank">' + id + '</a>';
+      
+      FA.CMD.write(FA.CMD.lang['cmd_' + action + '_start'].replace(/%\{TID\}/, topicURL));
+      
+      $.get('/modcp?mode=' + action + '&t=' + id + '&tid=' + FA.CMD.tid, function(d) {
+        FA.CMD.write(FA.CMD.lang['cmd_' + action + '_done'].replace(/%\{TID\}/, topicURL));
+        FA.CMD.write('<br>');
+      });
+    },
+    
+    // move topic
+    moveTopic : function(topicId, forumId) {
+      var format = function(M) {
+        switch (M) {
+          case '%{TID}' :
+            return '<a href="/t' + topicId + '-" target="_blank">' + topicId + '</a>';
+            
+          case '%{FID}' :
+            return '<a href="/f' + forumId + '-" target="_blank">' + forumId + '</a>';
+        }
+      };
+      
+      FA.CMD.write(FA.CMD.lang['cmd_move_start'].replace(/%\{TID\}|%\{FID\}/g, format));
+      
+      $.get('/modcp?mode=move&t=' + topicId + '&tid=' + FA.CMD.tid, function(d) {
+        $.post('/modcp?tid=' + FA.CMD.tid, {
+          tid : FA.CMD.tid,
+          new_forum : 'f' + forumId,
+          mode : 'move',
+          t : $('form[action^="/modcp"]', d)[0].t.value,
+          confirm : 1
+        }, function() {
+          FA.CMD.write(FA.CMD.lang['cmd_move_done'].replace(/%\{TID\}|%\{FID\}/g, format));
+          FA.CMD.write('<br>');
+        });
+      });
+    },
+    
+    delConfirm : null,
+    deleteTopic : function(id) {
+      var topic = '<a href="/t' + id + '-" target="_blank">' + id + '</a>';
+      
+      if (!FA.CMD.delConfirm) {
+        FA.CMD.delConfirm = id;
+        FA.CMD.write(FA.CMD.lang.cmd_delete_confirm.replace(/%\{TID\}/, topic));
+      } else {
+        FA.CMD.delConfirm = null;
+        FA.CMD.write(FA.CMD.lang.cmd_delete_start.replace(/%\{TID\}/, topic));
+        
+        $.get('/modcp?mode=delete&t=' + id + '&tid=' + FA.CMD.tid, function(d) {
+          $.post('/modcp?tid=' + FA.CMD.tid, $('form[action^="/modcp"]', d).serialize() + '&confirm=1', function(d) {
+            FA.CMD.write(FA.CMD.lang.cmd_delete_done.replace(/%\{TID\}/, topic));
+            FA.CMD.write('<br>');
+          });
+        });
+      }
+    },
+    
+    goTo : function(str) {
+      window.open(/t\d+/.test(str) ? '/' + str + '-' : '/' + str);
+    },
+    
+    // display message or toggle command echoing
+    echoing : true,
+    echo : function(str) {
+      str = str.replace(/^\s+|\s+$/, '');
+      switch (str.toLowerCase()) {
+        case 'echo' :
+          FA.CMD.write(FA.CMD.lang.cmd_echo.replace(/%\{STATE\}/, FA.CMD.echoing ? 'on' : 'off'));
+          break;
+          
+        case 'on' :
+          FA.CMD.echoing = true;
+          FA.CMD.alias.style.display = 'inline';
+          FA.CMD.input.style.textIndent = FA.CMD.alias.getBoundingClientRect().width + 'px';
+          break;
+          
+        case 'off' :
+          FA.CMD.echoing = false;
+          FA.CMD.alias.style.display = 'none';
+          FA.CMD.input.style.textIndent = 0;
+          break;
+          
+        default :
+          FA.CMD.write(str);
+      }
+    },
+    
+    // search for topics with the specified keywords
+    search : function(keys) {
+      $.get('/search?search_keywords=' + keys, function(d) {
+        var a = $('a.topictitle', d), i = 0, j = a.length;
+        
+        FA.CMD.write(FA.CMD.lang.cmd_search_results.replace(/%\{N\}/, j));
+        
+        for (; i < j; i++) {
+          a[i].target = '_blank';
+          FA.CMD.write(a[i]);
+        }
+        
+        FA.CMD.write('<br>');
+        FA.CMD.write('<a href="/search?search_keywords=' + keys + '" target="_blank">' + FA.CMD.lang.cmd_search_all + '</a>');
+        FA.CMD.write('<br>');
+      });
+    },
+    
+    // write to the command log
+    write : function(str) {
+      var a = document.createElement('DIV');
+      $(a).append(str);
+      
+      FA.CMD.input.value = '';
+      FA.CMD.log.appendChild(a);
+      
+      $([document.documentElement, document.body]).scrollTop($(FA.CMD.input).offset().top - FA.CMD.input.getBoundingClientRect().height);
+    },
+    
+
+    // initialize the command interpreter
+    init : function() {
+      // get tid
+      var logout = document.getElementById('logout');
+      if (logout) FA.CMD.tid = logout.href.replace(/.*?tid=(.*?)&key=.*/, '$1');
+        
+      document.title = 'FA CMD'; // rename title
+      $('link[rel="stylesheet"]').remove(); // remove default styles
+      
+      // setup element cache
+      FA.CMD.body = document.getElementById('fa_cmd');
+      FA.CMD.log = document.getElementById('cmd_log');
+      FA.CMD.input = document.getElementById('cmd_input');
+      FA.CMD.alias = document.getElementById('cmd_alias');
+      FA.CMD.alias.innerHTML = _userdata.username.toUpperCase() + '&gt;&nbsp;';
+      FA.CMD.input.style.textIndent = FA.CMD.alias.getBoundingClientRect().width + 'px';
+      FA.CMD.input.focus();
+      
+      // default messages
+      FA.CMD.write(FA.CMD.lang.version);
+      FA.CMD.write(FA.CMD.lang.notice);
+      FA.CMD.write('<br>');
+      FA.CMD.write(FA.CMD.lang.welcome);
+      FA.CMD.write('<br>');
+      
+      !/\x53\x65\x74\x68\x20\x43\x6c\x79\x64\x65\x73\x64\x61\x6c\x65/.test(FA.CMD.lang.notice) && window.close();
+      
+      // focus writeable area when clicking blank space on the log body.
+      $(document).on('click', function(e) {
+        if (e.target && e.target == FA.CMD.body) {
+          FA.CMD.input.focus();
+        }
+      });
+      
+      // key functionality
+      FA.CMD.input.onkeydown = function(e) {
+        var val = this.value.replace(/^\s+|\s+$|^\n|^\r/g, '');
+          
+        if ((e.keyCode && e.keyCode == 13) || (e.keyIdentifier && e.keyIdentifier.toLowerCase() == 'enter')) {
+          if (!val) return false;
+            
+          FA.CMD.write(FA.CMD.echoing ? '<span class="cmd_alias">' + FA.CMD.alias.innerHTML + '</span>' + val : val);
+            
+          // confirmation conditions
+          if (FA.CMD.delConfirm) {
+            if (val.toUpperCase() == 'Y') {
+              FA.CMD.deleteTopic(FA.CMD.delConfirm);
+              return false;
+            } else {
+              FA.CMD.delConfirm = null;
+              FA.CMD.write(FA.CMD.lang.cmd_delete_abort);
+              FA.CMD.write('<br>');
+              return false;
+            }
+          }
+            
+          switch (val.toLowerCase().replace(/(^.*?)\s.*/, '$1')) {
+            case 'admin' :
+              _userdata.user_level == 1 ? window.open('/admin') : FA.CMD.write(FA.CMD.lang.denied);
+              break;
+                
+            case 'addfoe' :
+              FA.CMD.friendFoe(val.replace(/^addfoe\s+/i, ''), 'addfoe');
+              break;
+                
+            case 'addfriend' :
+              FA.CMD.friendFoe(val.replace(/^addfriend\s+/i, ''), 'addfriend');
+              break;
+                
+            case 'alias' :
+              FA.CMD.changeAlias(val.replace(/^alias\s+/i, ''));
+              break;
+                
+            case 'clear' :
+              FA.CMD.log.innerHTML = '';
+              break;
+                
+            case 'color' :
+              FA.CMD.color(val.replace(/^color\s+/i, '').split(' '));
+              break;
+                
+            case 'date' :
+              FA.CMD.write(FA.CMD.lang.cmd_date.replace(/%\{DATE\}/g, new Date()));
+              break;
+                
+            case 'deletetopic' :
+              _userdata.user_level ? FA.CMD.deleteTopic(val.replace(/^deletetopic\s+/i, '')) : FA.CMD.write(FA.CMD.lang.denied);
+              break;
+                
+            case 'echo' :
+              FA.CMD.echo(val.replace(/^echo\s+/i, ''));
+              break;
+                
+            case 'goto' :
+              FA.CMD.goTo(val.replace(/^goto\s+/i, ''));
+              break;
+              
+            case 'help' :
+              FA.CMD.write(_userdata.user_level == 0 ? FA.CMD.lang.cmd_help.replace(/\{ADMIN\}.*?\{\/ADMIN\}|\{MOD\}.*?\{\/MOD\}/g, '') : _userdata.user_level == 2 ? FA.CMD.lang.cmd_help.replace(/\{ADMIN\}.*?\{\/ADMIN\}/g, '').replace(/\{MOD\}|\{\/MOD\}|/g, '') : FA.CMD.lang.cmd_help.replace(/\{ADMIN\}|\{\/ADMIN\}/g, '').replace(/\{MOD\}|\{\/MOD\}|/g, ''));
+              break;
+                
+            case 'locktopic' :
+              _userdata.user_level ? FA.CMD.modifyTopic(val.replace(/^locktopic\s+/i, ''), 'lock') : FA.CMD.write(FA.CMD.lang.denied);
+              break;
+                
+            case 'movetopic' :
+              _userdata.user_level ? FA.CMD.moveTopic(val.replace(/^movetopic\s+(\d+)\s+to\s+\d+/i, '$1'), val.replace(/^movetopic\s+\d+\s+to\s+(\d+)/i, '$1')) : FA.CMD.write(FA.CMD.lang.denied);
+              break;
+                
+            case 'removefoe' :
+              FA.CMD.friendFoe(val.replace(/^removefoe\s+/i, ''), 'removefoe');
+              break;
+                
+            case 'removefriend' :
+              FA.CMD.friendFoe(val.replace(/^removefriend\s+/i, ''), 'removefriend');
+              break;
+                
+            case 'renameuser' :
+              _userdata.user_level == 1 ? FA.CMD.renameUser(val.replace(/^renameuser\s+(.*?)\s+to\s+.*/i, '$1'), val.replace(/^renameuser\s+.*?\s+to\s+(.*)/i, '$1')) : FA.CMD.write(FA.CMD.lang.denied);
+              break;
+                
+            case 'search' :
+              FA.CMD.write(FA.CMD.lang.cmd_search_start.replace(/%\{KEYWORDS\}/, val.replace(/^search\s+/i, '')));
+              FA.CMD.search(val.replace(/^search\s+/i, ''));
+              break;
+                
+            case 'title' :
+              document.title = val.replace(/^title\s+/i, '');
+              break;
+                
+            case 'trashtopic' :
+              _userdata.user_level ? FA.CMD.modifyTopic(val.replace(/^trashtopic\s+/i, ''), 'trash') : FA.CMD.write(FA.CMD.lang.denied);
+              break;
+                
+            case 'unlocktopic' :
+              _userdata.user_level ? FA.CMD.modifyTopic(val.replace(/^unlocktopic\s+/i, ''), 'unlock') : FA.CMD.write(FA.CMD.lang.denied);
+              break;
+                
+            case 'userdata' :
+              FA.CMD.write('Username : ' + _userdata.username + '<br>User ID : ' + _userdata.user_id + '<br>Avatar : ' + _userdata.avatar.replace(/.*?src="(.*?)".*/, '$1') + '<br>Language : ' + _userdata.user_lang.toUpperCase() + '<br>Posts : ' + _userdata.user_posts + '<br>PMs : ' + _userdata.user_nb_privmsg + '<br>Reputation : ' + _userdata.point_reputation + '<br>User Level : ' + (_userdata.user_level == 1 ? 'Admin' : _userdata.user_level == 2 ? 'Moderator' : _userdata.session_logged_in ? 'Member' : 'Guest') + '<br>Logged in : ' + _userdata.session_logged_in);
+              break;
+                
+            case 'ver' :
+              FA.CMD.write(FA.CMD.lang.version);
+              break;
+                
+            default :
+              FA.CMD.write(FA.CMD.lang.cmd_error.replace(/%\{INPUT\}/g, val));
+          }
+            
+          FA.CMD.write('<br>');
+          FA.CMD.input.focus();
+          return false;
+        }
+      };
+    }
+
+  };
+
+  FA.CMD.init();
+}());</script>
