@@ -80,6 +80,11 @@ body { margin:0 !important; overflow:hidden; }
           '</tr>' +
           
           '<tr>' +
+            '<td>EXIT</td>' +
+            '<td>Exit the command interpreter.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
             '<td>GOTO [PATHNAME]</td>' +
             '<td>Opens a tab to the specified pathname. (e.g. goto u1)</td>' +
           '</tr>' +
@@ -100,6 +105,11 @@ body { margin:0 !important; overflow:hidden; }
           '</tr>{/MOD}' +
           
           '<tr>' +
+            '<td>ONLINE</td>' +
+            '<td>Display a list of the currently connected users.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
             '<td>REMOVEFOE [USERID]</td>' +
             '<td>Removes the specified user from your foes list.</td>' +
           '</tr>' +
@@ -115,7 +125,7 @@ body { margin:0 !important; overflow:hidden; }
           '</tr>{/ADMIN}' +
           
           '<tr>' +
-            '<td>SEARCH [KEYWORDS]</td>' +
+            '<td>SEARCHTOPIC [KEYWORDS]</td>' +
             '<td>Performs a search for topics on the forum that contain the specified KEYWORDS.</td>' +
           '</tr>' +
           
@@ -135,6 +145,11 @@ body { margin:0 !important; overflow:hidden; }
           '</tr>{/MOD}' +
           
           '<tr>' +
+            '<td>UNWATCHTOPIC [TOPICID]</td>' +
+            '<td>Removes the specified topic from your <a href="/search?search_id=watchsearch" target="_blank">watched topic list</a>.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
             '<td>USERDATA</td>' +
             '<td>Returns information based on your account.</td>' +
           '</tr>' +
@@ -142,6 +157,11 @@ body { margin:0 !important; overflow:hidden; }
           '<tr>' +
             '<td>VER</td>' +
             '<td>Displays the current version of the command interpreter.</td>' +
+          '</tr>' +
+          
+          '<tr>' +
+            '<td>WATCHTOPIC [TOPICID]</td>' +
+            '<td>Adds the specified topic to your <a href="/search?search_id=watchsearch" target="_blank">watched topic list</a>.</td>' +
           '</tr>' +
         '</tbody>' +
       '</table>',
@@ -171,6 +191,11 @@ body { margin:0 !important; overflow:hidden; }
       cmd_delete_done : 'Topic %{TID} has been deleted successfully.',
       cmd_delete_abort : 'Topic deletion has been aborted.',
       
+      cmd_watch_start : 'Attempting to watch topic %{TID}...',
+      cmd_watch_done : 'Topic %{TID} has been watched successfully.',
+      cmd_unwatch_start : 'Attempting to unwatch topic %{TID}...',
+      cmd_unwatch_done : 'Topic %{TID} has been unwatched successfully.',
+      
       cmd_addfriend_start : 'Attempting to add %{UID} to your friends list...',
       cmd_addfriend_done : 'The friend request has been sent successfully to %{UID}.',
       
@@ -183,14 +208,17 @@ body { margin:0 !important; overflow:hidden; }
       cmd_removefoe_start : 'Attempting to remove user %{UID} from your foes list...',
       cmd_removefoe_done : 'User %{UID} has been successfully removed from your foes list.',
       
+      cmd_online_start : 'Checking <a href="/viewonline" target="_blank">viewonline</a> for online users...',
+      cmd_online_done : 'There is currently %{N} user(s) online.',
+      
       cmd_echo : 'ECHO is %{STATE}.',
       cmd_error : '"%{INPUT}" is not recognized as an internal command.',
       
       denied : 'PERMISSION DENIED.',
       loading : 'Please wait while the command line is initialized...',
       welcome : 'Welcome to the Forumactif command-line interpreter ! Type "help" without the quotes if you need more information on the use of this tool.',
-      version : 'ForumActif Command Interpreter [Version 0.2.1]',
-      notice : 'Developed by <a href="https://github.com/SethClydesdale" target="_blank">Seth Clydesdale</a>. No distribution without consent of the author.'
+      version : 'ForumActif Command Interpreter [Version 0.3.2]',
+      notice : 'Developed by <a href="https://github.com/SethClydesdale/fa-cmd#readme" target="_blank">Seth Clydesdale</a>. No distribution without consent of the author.'
     },
     
     // change alias
@@ -275,6 +303,7 @@ body { margin:0 !important; overflow:hidden; }
       });
     },
     
+    // delete topic
     delConfirm : null,
     deleteTopic : function(id) {
       var topic = '<a href="/t' + id + '-" target="_blank">' + id + '</a>';
@@ -295,8 +324,19 @@ body { margin:0 !important; overflow:hidden; }
       }
     },
     
+    watchTopic : function(id, mode) {
+      var topic = '<a href="/t' + id + '-" target="_blank">' + id + '</a>';
+    
+      FA.CMD.write(FA.CMD.lang['cmd_' + mode + '_start'].replace(/%\{TID\}/, topic));
+      $.get('/t' + id + '-?' + mode + '=topic', function() {
+        FA.CMD.write(FA.CMD.lang['cmd_' + mode + '_done'].replace(/%\{TID\}/, topic));
+        FA.CMD.write('<br>');
+      });
+    },
+    
+    // goto the specified path
     goTo : function(str) {
-      window.open(/t\d+/.test(str) ? '/' + str + '-' : '/' + str);
+      window.open(window.location.protocol + window.location.host + (/t\d+/.test(str) ? '/' + str + '-' : '/' + str));
     },
     
     // display message or toggle command echoing
@@ -447,6 +487,10 @@ body { margin:0 !important; overflow:hidden; }
             case 'echo' :
               FA.CMD.echo(val.replace(/^echo\s+/i, ''));
               break;
+              
+            case 'exit' :
+              window.close();
+              break;
                 
             case 'goto' :
               FA.CMD.goTo(val.replace(/^goto\s+/i, ''));
@@ -463,6 +507,23 @@ body { margin:0 !important; overflow:hidden; }
             case 'movetopic' :
               _userdata.user_level ? FA.CMD.moveTopic(val.replace(/^movetopic\s+(\d+)\s+to\s+\d+/i, '$1'), val.replace(/^movetopic\s+\d+\s+to\s+(\d+)/i, '$1')) : FA.CMD.write(FA.CMD.lang.denied);
               break;
+              
+            case 'online' :
+              FA.CMD.write(FA.CMD.lang.cmd_online_start);
+            
+              $.get('/viewonline?change_version=prosilver', function(d) {
+                var online = $('.forumbg a[href^="/u"]', d);
+                FA.CMD.write(FA.CMD.lang.cmd_online_done.replace(/%\{N\}/, online.length));
+                
+                for (var i = 0, j = online.length; i < j; i++) {
+                  online[i].href = online[i].href.replace(/\?change_version=prosilver/, '');
+                  online[i].target = '_blank';
+                  FA.CMD.write(online[i]);
+                }
+                
+                FA.CMD.write('<br>');
+              });
+              break;
                 
             case 'removefoe' :
               FA.CMD.friendFoe(val.replace(/^removefoe\s+/i, ''), 'removefoe');
@@ -475,8 +536,11 @@ body { margin:0 !important; overflow:hidden; }
             case 'renameuser' :
               _userdata.user_level == 1 ? FA.CMD.renameUser(val.replace(/^renameuser\s+(.*?)\s+to\s+.*/i, '$1'), val.replace(/^renameuser\s+.*?\s+to\s+(.*)/i, '$1')) : FA.CMD.write(FA.CMD.lang.denied);
               break;
+              
+            case 'searchmember' :
+              break;
                 
-            case 'search' :
+            case 'searchtopic' :
               FA.CMD.write(FA.CMD.lang.cmd_search_start.replace(/%\{KEYWORDS\}/, val.replace(/^search\s+/i, '')));
               FA.CMD.search(val.replace(/^search\s+/i, ''));
               break;
@@ -492,6 +556,10 @@ body { margin:0 !important; overflow:hidden; }
             case 'unlocktopic' :
               _userdata.user_level ? FA.CMD.modifyTopic(val.replace(/^unlocktopic\s+/i, ''), 'unlock') : FA.CMD.write(FA.CMD.lang.denied);
               break;
+              
+            case 'unwatchtopic' :
+              FA.CMD.watchTopic(val.replace(/^unwatchtopic\s+/i, ''), 'unwatch');
+              break;
                 
             case 'userdata' :
               FA.CMD.write('Username : ' + _userdata.username + '<br>User ID : ' + _userdata.user_id + '<br>Avatar : ' + _userdata.avatar.replace(/.*?src="(.*?)".*/, '$1') + '<br>Language : ' + _userdata.user_lang.toUpperCase() + '<br>Posts : ' + _userdata.user_posts + '<br>PMs : ' + _userdata.user_nb_privmsg + '<br>Reputation : ' + _userdata.point_reputation + '<br>User Level : ' + (_userdata.user_level == 1 ? 'Admin' : _userdata.user_level == 2 ? 'Moderator' : _userdata.session_logged_in ? 'Member' : 'Guest') + '<br>Logged in : ' + _userdata.session_logged_in);
@@ -499,6 +567,10 @@ body { margin:0 !important; overflow:hidden; }
                 
             case 'ver' :
               FA.CMD.write(FA.CMD.lang.version);
+              break;
+              
+            case 'watchtopic' :
+              FA.CMD.watchTopic(val.replace(/^watchtopic\s+/i, ''), 'watch');
               break;
                 
             default :
